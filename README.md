@@ -1,12 +1,12 @@
 # Coffee Inventory MVP
 
-Web-based inventory and forecasting MVP for a single-location coffee shop. Built as a monorepo: Vue 3 frontend, Next.js API, Prisma + PostgreSQL.
+Web-based inventory and forecasting MVP for a single-location coffee shop. Built as a monorepo: Vue 3 frontend, Next.js API, Prisma + SQLite.
 
 ## Stack
 
 - **Frontend**: Vue 3, Vite, TypeScript, Pinia, Tailwind CSS, Chart.js
 - **Backend**: Next.js (App Router) API routes only
-- **Database**: PostgreSQL, Prisma ORM
+- **Database**: SQLite (local dev), Prisma ORM
 - **Hosting**: Vercel (one project; web + API)
 
 ## Project structure
@@ -27,7 +27,7 @@ lib/
 ### Prerequisites
 
 - Node 18+
-- PostgreSQL (local or Supabase/Neon)
+- SQLite (automatically created by Prisma)
 
 ### Setup
 
@@ -37,15 +37,13 @@ lib/
    npm install
    ```
 
-2. Set environment variables:
+2. A `.env` file has been created in the **repo root** with:
 
-   - **API** (e.g. in `apps/api/.env.local` or root `.env`):
-     - `DATABASE_URL` — PostgreSQL connection string
-     - `SESSION_SECRET` — secret for session cookies (e.g. `openssl rand -hex 32`)
-     - `ALLOWED_ORIGIN` — optional; defaults to `http://localhost:5173` for CORS
+   - `DATABASE_URL="file:./dev.db"` — SQLite database for local development
+   - `SESSION_SECRET` — secret for session cookies
+   - `ALLOWED_ORIGIN` — CORS origin for API (defaults to `http://localhost:5173`)
 
-   - **Web** (e.g. in `apps/web/.env.local`):
-     - `VITE_API_URL` — optional; if unset, Vite proxies `/api` to `http://localhost:3000` in dev
+   The SQLite database is stored at `packages/db/prisma/dev.db`.
 
 3. Generate Prisma client and push schema:
 
@@ -62,10 +60,10 @@ lib/
 
    Seed creates one shop, owner user (`owner@demo.coffee` / `demo123`), core ingredients (espresso beans, whole milk, oat milk, orange flavoring, cardamom), base drinks (espresso, latte, iced latte), and the signature drink **Foxtrot** (espresso + orange flavoring + cardamom).
 
-5. Run dev servers:
+5. Run dev servers (from repo root):
 
    ```bash
-   npm run dev:api    # Next.js API on http://localhost:3000
+   npm run dev:api    # Next.js API on http://localhost:3000 (uses root .env)
    npm run dev:web    # Vue on http://localhost:5173
    ```
 

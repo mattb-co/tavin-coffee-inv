@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -22,15 +22,10 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String
-  role         Role     @default(STAFF)
+  role         String   @default("STAFF")
   shopId       String
   shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   createdAt    DateTime? // optional for future extension
-}
-
-enum Role {
-  OWNER
-  STAFF
 }
 
 model Ingredient {
@@ -85,10 +80,5 @@ model Sale {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity  Int
   soldAt    DateTime @default(now())
-  source    SaleSource @default(MANUAL)
-}
-
-enum SaleSource {
-  MANUAL
-  POS
+  source    String   @default("MANUAL")
 }
