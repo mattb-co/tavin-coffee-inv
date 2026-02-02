@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Shop {
+  id        String   @id @default(cuid())
+  name      String
+  timezone  String
+  createdAt DateTime @default(now())
+  users     User[]
+  ingredients Ingredient[]
+  products  Product[]
+  sales     Sale[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(STAFF)
+  shopId       String
+  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  createdAt    DateTime? // optional for future extension
+}
+
+enum Role {
+  OWNER
+  STAFF
+}
+
+model Ingredient {
+  id             String   @id @default(cuid())
+  shopId         String
+  shop           Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name           String
+  unit           String
+  stockCurrent   Float    @default(0)
+  reorderPoint   Float    @default(0)
+  costPerUnit    Float    @default(0)
+  updatedAt      DateTime? @updatedAt
+  adjustments    InventoryAdjustment[]
+  recipeItems    RecipeItem[]
+}
+
+model InventoryAdjustment {
+  id           String   @id @default(cuid())
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  delta        Float
+  reason       String
+  createdAt    DateTime @default(now())
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  shopId     String
+  shop       Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name       String
+  sku        String
+  isIced     Boolean  @default(false)
+  isActive   Boolean  @default(true)
+  recipeItems RecipeItem[]
+  sales      Sale[]
+}
+
+model RecipeItem {
+  id           String   @id @default(cuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  quantity     Float
+}
+
+model Sale {
+  id        String   @id @default(cuid())
+  shopId    String
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+  soldAt    DateTime @default(now())
+  source    SaleSource @default(MANUAL)
+}
+
+enum SaleSource {
+  MANUAL
+  POS
+}

@@ -1,0 +1,21 @@
+{
+  "name": "coffee-inventory-mvp",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @coffee-inventory/web",
+    "dev:api": "npm run dev -w @coffee-inventory/api",
+    "build:web": "npm run build -w @coffee-inventory/web",
+    "build:api": "npm run build -w @coffee-inventory/api",
+    "db:generate": "npm run db:generate -w @coffee-inventory/db",
+    "db:push": "npm run db:push -w @coffee-inventory/db",
+    "db:migrate": "npm run db:migrate -w @coffee-inventory/db",
+    "db:seed": "npm run db:seed -w @coffee-inventory/db"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
