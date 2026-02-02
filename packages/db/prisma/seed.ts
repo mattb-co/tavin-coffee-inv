@@ -1,5 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { config } from "dotenv";
+import { resolve } from "path";
+
+// Load .env from repo root
+config({ path: resolve(__dirname, "../../../.env") });
 
 const prisma = new PrismaClient();
 
@@ -178,7 +183,139 @@ async function main() {
     ],
   });
 
-  console.log("Seed complete: shop, owner (owner@demo.coffee / demo123), ingredients, products, Foxtrot recipe.");
+  // Generate sales data for the past 30 days
+  console.log("Generating sales data for the past 30 days...");
+  
+  const now = new Date();
+  const salesData: Array<{ productId: string; quantity: number; soldAt: Date; shopId: string; source: string }> = [];
+
+  // Product IDs for easy reference
+  const products = [
+    { id: espresso.id, name: "Espresso", weight: 15 }, // Less popular
+    { id: latte.id, name: "Latte", weight: 40 }, // Most popular
+    { id: icedLatte.id, name: "Iced latte", weight: 35 }, // Very popular
+    { id: foxtrot.id, name: "Foxtrot", weight: 10 }, // Signature specialty
+  ];
+
+  // Generate sales for each of the past 30 days
+  for (let daysAgo = 29; daysAgo >= 0; daysAgo--) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - daysAgo);
+    date.setHours(0, 0, 0, 0);
+    
+    const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    
+    // Base sales multiplier (weekends are busier)
+    const dayMultiplier = isWeekend ? 1.4 : 1.0;
+    
+    // Slight upward trend over 30 days (business growing)
+    const trendMultiplier = 0.85 + (daysAgo / 29) * 0.3; // 0.85 to 1.15
+    
+    // Generate sales throughout the day
+    const openingHours = [
+      { hour: 7, weight: 1.5 }, // Early morning rush
+      { hour: 8, weight: 2.5 }, // Peak morning
+      { hour: 9, weight: 2.0 }, // Morning continues
+      { hour: 10, weight: 1.2 }, // Mid-morning
+      { hour: 11, weight: 1.0 }, // Late morning
+      { hour: 12, weight: 1.3 }, // Lunch
+      { hour: 13, weight: 1.1 }, // After lunch
+      { hour: 14, weight: 1.4 }, // Afternoon pick-me-up
+      { hour: 15, weight: 1.6 }, // Afternoon rush
+      { hour: 16, weight: 1.2 }, // Late afternoon
+      { hour: 17, weight: 0.8 }, // Evening wind down
+    ];
+
+    for (const timeSlot of openingHours) {
+      const baseOrdersThisHour = 8; // Base orders per hour
+      const ordersThisHour = Math.round(
+        baseOrdersThisHour * timeSlot.weight * dayMultiplier * trendMultiplier
+      );
+
+      for (let order = 0; order < ordersThisHour; order++) {
+        // Weighted random product selection
+        const totalWeight = products.reduce((sum, p) => sum + p.weight, 0);
+        let random = Math.random() * totalWeight;
+        let selectedProduct = products[0];
+        
+        for (const product of products) {
+          random -= product.weight;
+          if (random <= 0) {
+            selectedProduct = product;
+            break;
+          }
+        }
+
+        // Random time within the hour
+        const saleTime = new Date(date);
+        saleTime.setHours(timeSlot.hour, Math.floor(Math.random() * 60), Math.floor(Math.random() * 60));
+
+        // Quantity (usually 1, occasionally 2-3 for groups)
+        const quantity = Math.random() < 0.85 ? 1 : Math.random() < 0.7 ? 2 : 3;
+
+        salesData.push({
+          productId: selectedProduct.id,
+          quantity,
+          soldAt: saleTime,
+          shopId: shop.id,
+          source: "MANUAL",
+        });
+      }
+    }
+  }
+
+  // Add some random variation - occasional slow/busy days
+  const totalDays = 30;
+  for (let i = 0; i < 5; i++) {
+    const randomDay = Math.floor(Math.random() * totalDays);
+    const extraSales = Math.floor(Math.random() * 20) + 10;
+    const date = new Date(now);
+    date.setDate(date.getDate() - randomDay);
+    
+    for (let j = 0; j < extraSales; j++) {
+      const randomProduct = products[Math.floor(Math.random() * products.length)];
+      const saleTime = new Date(date);
+      saleTime.setHours(8 + Math.floor(Math.random() * 9), Math.floor(Math.random() * 60));
+      
+      salesData.push({
+        productId: randomProduct.id,
+        quantity: 1,
+        soldAt: saleTime,
+        shopId: shop.id,
+        source: "MANUAL",
+      });
+    }
+  }
+
+  // Sort sales by date
+  salesData.sort((a, b) => a.soldAt.getTime() - b.soldAt.getTime());
+
+  // Delete existing sales for this shop to avoid duplicates
+  await prisma.sale.deleteMany({ where: { shopId: shop.id } });
+
+  // Batch insert sales (in chunks to avoid memory issues)
+  const chunkSize = 500;
+  for (let i = 0; i < salesData.length; i += chunkSize) {
+    const chunk = salesData.slice(i, i + chunkSize);
+    await prisma.sale.createMany({ data: chunk });
+  }
+
+  console.log(`Created ${salesData.length} sales records over the past 30 days`);
+  
+  // Summary by product
+  const salesByProduct = salesData.reduce((acc, sale) => {
+    const product = products.find((p) => p.id === sale.productId)!;
+    acc[product.name] = (acc[product.name] || 0) + sale.quantity;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  console.log("\nSales summary by product:");
+  Object.entries(salesByProduct).forEach(([name, count]) => {
+    console.log(`  ${name}: ${count} units`);
+  });
+
+  console.log("\nSeed complete: shop, owner (owner@demo.coffee / demo123), ingredients, products, recipes, and 30 days of sales data.");
 }
 
 main()
